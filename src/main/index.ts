@@ -7,6 +7,7 @@ import {
   Notification,
 } from "electron";
 import { join } from "path";
+
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import type { AppUpdater } from "electron-updater";
 import icon from "../../resources/icon.png?asset";
@@ -107,6 +108,11 @@ import {
 } from "./cronjobs";
 import { getAppLocale, setAppLocale } from "./locale";
 
+
+// WSL/Linux headless: disable GPU acceleration to prevent black screen
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("no-sandbox");
+app.commandLine.appendSwitch("disable-gpu-sandbox");
 process.on("uncaughtException", (err) => {
   console.error("[MAIN UNCAUGHT]", err);
 });
@@ -369,10 +375,14 @@ function setupIPC(): void {
                 .replace(/[#*_`~\n]+/g, " ")
                 .trim()
                 .slice(0, 80);
+              try {
               new Notification({
                 title: "Hermes Agent",
                 body: preview || "Response ready",
               }).show();
+              } catch {
+                // D-Bus notifications may fail on WSL
+              }
             }
           },
           onError: (error) => {
@@ -381,10 +391,14 @@ function setupIPC(): void {
             rejectChat(new Error(error));
             // Notify on error too if window not focused
             if (mainWindow && !mainWindow.isFocused()) {
-              new Notification({
+              try {
+                new Notification({
                 title: "Hermes Agent — Error",
                 body: error.slice(0, 100),
               }).show();
+              } catch {
+                // D-Bus notifications may fail on WSL
+              }
             }
           },
           onToolProgress: (tool) => {
