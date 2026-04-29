@@ -15,7 +15,30 @@ import {
   Bell,
   Slash,
   Zap,
+  Mic,
+  MicOff,
 } from "lucide-react";
+
+// Minimal Web Speech API types (vendor-prefixed in some browsers)
+interface MiniSpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly [index: number]: { readonly transcript: string };
+}
+interface MiniSpeechRecognitionEvent {
+  readonly resultIndex: number;
+  readonly results: ArrayLike<MiniSpeechRecognitionResult>;
+}
+interface MiniSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: MiniSpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+type SpeechRecognitionCtor = new () => MiniSpeechRecognition;
 
 // ── Slash Commands ──────────────────────────────────────
 
@@ -233,6 +256,43 @@ function Chat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isLoadingRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<MiniSpeechRecognition | null>(null);
+
+  const toggleVoiceInput = (): void => {
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) {
+      alert("Voice input not supported in this browser/Electron version.");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const r = new SR();
+    r.lang = navigator.language || "en-US";
+    r.continuous = false;
+    r.interimResults = true;
+    let finalText = "";
+    r.onresult = (e: MiniSpeechRecognitionEvent): void => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const piece = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += piece;
+        else interim += piece;
+      }
+      setInput((finalText + interim).trim());
+    };
+    r.onerror = (): void => setListening(false);
+    r.onend = (): void => setListening(false);
+    recognitionRef.current = r;
+    setListening(true);
+    r.start();
+  };
 
   // Model picker state
   const [currentModel, setCurrentModel] = useState("");
@@ -1094,6 +1154,14 @@ function Chat({
             </button>
           ) : (
             <>
+              <button
+                className="chat-send-btn"
+                onClick={toggleVoiceInput}
+                title={listening ? "Stop listening" : "Voice input"}
+                style={listening ? { color: "#e54545" } : undefined}
+              >
+                {listening ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
               {input.trim() && hermesSessionId && (
                 <button
                   className="chat-btw-btn"
