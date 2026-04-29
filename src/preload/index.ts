@@ -522,6 +522,36 @@ const hermesAPI = {
     return () => ipcRenderer.removeListener("menu-search-sessions", handler);
   },
 
+  onMenuOfficeShow: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("menu-office-show", handler);
+    return () => ipcRenderer.removeListener("menu-office-show", handler);
+  },
+
+  onMenuOfficeToggle: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("menu-office-toggle", handler);
+    return () => ipcRenderer.removeListener("menu-office-toggle", handler);
+  },
+
+  onMenuOfficeReload: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("menu-office-reload", handler);
+    return () => ipcRenderer.removeListener("menu-office-reload", handler);
+  },
+
+  onMenuOfficeOpenBrowser: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("menu-office-open-browser", handler);
+    return () => ipcRenderer.removeListener("menu-office-open-browser", handler);
+  },
+
+  onMenuOfficeLogs: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("menu-office-logs", handler);
+    return () => ipcRenderer.removeListener("menu-office-logs", handler);
+  },
+
   // Cron Jobs
   listCronJobs: (
     includeDisabled?: boolean,

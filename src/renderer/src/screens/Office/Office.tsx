@@ -99,6 +99,41 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
     }
   }, [progress.log, logs]);
 
+  // Native notifications when running state changes
+  useEffect(() => {
+    if (state === "ready" && running && !starting) {
+      try {
+        new Notification("Office ready", {
+          body: `Claw3D is running on port ${port}.`,
+          silent: true,
+        });
+      } catch {}
+    }
+  }, [running, starting, state, port]);
+
+  // Menu event listeners (Cmd+Shift+T/R/B/L from native menu)
+  useEffect(() => {
+    if (!visible) return;
+    const cleanupToggle = window.hermesAPI.onMenuOfficeToggle(() => {
+      handleStartStop();
+    });
+    const cleanupReload = window.hermesAPI.onMenuOfficeReload(() => {
+      refreshWebview();
+    });
+    const cleanupOpenBrowser = window.hermesAPI.onMenuOfficeOpenBrowser(() => {
+      window.hermesAPI.openExternal(`http://localhost:${port}`);
+    });
+    const cleanupLogs = window.hermesAPI.onMenuOfficeLogs(() => {
+      loadLogs();
+    });
+    return () => {
+      cleanupToggle();
+      cleanupReload();
+      cleanupOpenBrowser();
+      cleanupLogs();
+    };
+  }, [visible, port]);
+
   // Webview load/error handling
   useEffect(() => {
     const wv = webviewRef.current as unknown as {

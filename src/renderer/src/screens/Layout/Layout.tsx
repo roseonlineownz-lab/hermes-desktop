@@ -128,9 +128,14 @@ function Layout(): React.JSX.Element {
     const cleanupSearch = window.hermesAPI.onMenuSearchSessions(() => {
       setView("sessions");
     });
+    const cleanupOfficeShow = window.hermesAPI.onMenuOfficeShow(() => {
+      setOfficeVisited(true);
+      setView("office");
+    });
     return () => {
       cleanupNewChat();
       cleanupSearch();
+      cleanupOfficeShow();
     };
   }, [handleNewChat]);
 

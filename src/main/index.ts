@@ -730,6 +730,47 @@ function buildMenu(): void {
       ],
     },
     {
+      label: "Office",
+      submenu: [
+        {
+          label: "Show Office",
+          accelerator: "CmdOrCtrl+Shift+O",
+          click: (): void => {
+            mainWindow?.webContents.send("menu-office-show");
+          },
+        },
+        {
+          label: "Toggle Office Service",
+          accelerator: "CmdOrCtrl+Shift+T",
+          click: (): void => {
+            mainWindow?.webContents.send("menu-office-toggle");
+          },
+        },
+        {
+          label: "Reload Office View",
+          accelerator: "CmdOrCtrl+Shift+R",
+          click: (): void => {
+            mainWindow?.webContents.send("menu-office-reload");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Open Office in Browser",
+          accelerator: "CmdOrCtrl+Shift+B",
+          click: (): void => {
+            mainWindow?.webContents.send("menu-office-open-browser");
+          },
+        },
+        {
+          label: "View Office Logs",
+          accelerator: "CmdOrCtrl+Shift+L",
+          click: (): void => {
+            mainWindow?.webContents.send("menu-office-logs");
+          },
+        },
+      ],
+    },
+    {
       label: "Edit",
       submenu: [
         { role: "undo" },

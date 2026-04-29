@@ -343,6 +343,11 @@ interface HermesAPI {
   // Menu events
   onMenuNewChat: (callback: () => void) => () => void;
   onMenuSearchSessions: (callback: () => void) => () => void;
+  onMenuOfficeShow: (callback: () => void) => () => void;
+  onMenuOfficeToggle: (callback: () => void) => () => void;
+  onMenuOfficeReload: (callback: () => void) => () => void;
+  onMenuOfficeOpenBrowser: (callback: () => void) => () => void;
+  onMenuOfficeLogs: (callback: () => void) => () => void;
 
   // Cron Jobs
   listCronJobs: (
