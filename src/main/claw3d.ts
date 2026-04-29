@@ -141,6 +141,25 @@ function checkPort(port: number): Promise<boolean> {
   });
 }
 
+// Detect a Claw3D server already running on `port` outside this app's control.
+// Returns true if the /api/studio endpoint responds with Claw3D-shaped JSON.
+async function probeExternalClaw3d(port: number): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 800);
+    const r = await fetch(`http://127.0.0.1:${port}/api/studio`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) return false;
+    const j = (await r.json()) as Record<string, unknown>;
+    const s = j?.settings as Record<string, unknown> | undefined;
+    return !!(s && typeof s === "object" && s.gateway);
+  } catch {
+    return false;
+  }
+}
+
 export interface Claw3dStatus {
   cloned: boolean;
   installed: boolean;
@@ -213,15 +232,22 @@ export async function getClaw3dStatus(): Promise<Claw3dStatus> {
   const port = getSavedPort();
   const devRunning = isDevServerRunning();
   // Only check port conflict when dev server is NOT running
-  const portInUse = devRunning ? false : await checkPort(port);
+  let portInUse = devRunning ? false : await checkPort(port);
+  // If port is "in use" but it's actually a Claw3D server we can talk to,
+  // adopt it instead of treating it as a conflict.
+  let externalClaw3d = false;
+  if (portInUse && !devRunning) {
+    externalClaw3d = await probeExternalClaw3d(port);
+    if (externalClaw3d) portInUse = false;
+  }
   const adapterUp = isAdapterRunning();
   const error = devServerError || adapterError;
   return {
-    cloned,
-    installed,
-    devServerRunning: devRunning,
+    cloned: cloned || externalClaw3d,
+    installed: installed || externalClaw3d,
+    devServerRunning: devRunning || externalClaw3d,
     adapterRunning: adapterUp,
-    running: devRunning && adapterUp,
+    running: (devRunning && adapterUp) || externalClaw3d,
     port,
     portInUse,
     wsUrl: getSavedWsUrl(),
