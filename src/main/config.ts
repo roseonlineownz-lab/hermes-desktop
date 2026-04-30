@@ -272,7 +272,12 @@ export function getHermesHome(profile?: string): string {
 
 // ── Platform enabled/disabled in config.yaml ────────────
 
-const SUPPORTED_PLATFORMS = ["telegram", "discord", "slack", "whatsapp", "signal"];
+const SUPPORTED_PLATFORMS = [
+  "telegram", "discord", "slack", "whatsapp", "signal",
+  "matrix", "mattermost", "email", "sms", "bluebubbles",
+  "dingtalk", "feishu", "wecom", "weixin", "webhooks",
+  "home_assistant",
+];
 
 export function getPlatformEnabled(profile?: string): Record<string, boolean> {
   const { configFile } = profilePaths(profile);

@@ -142,7 +142,17 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
       executeJavaScript?: (code: string) => Promise<unknown>;
     };
     if (!wv) return;
+
+    // Fallback: if did-finish-load doesn't fire within 10s, mark as ready
+    // (the page is confirmed reachable via /api/studio probe)
+    const fallbackTimer = setTimeout(() => {
+      if (!webviewReady) {
+        setWebviewReady(true);
+      }
+    }, 10000);
+
     const onLoad = (): void => {
+      clearTimeout(fallbackTimer);
       setWebviewReady(true);
       setWebviewError("");
       if (wv.executeJavaScript) {
@@ -152,9 +162,10 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
       }
     };
     const onFail = (evt: unknown): void => {
-      setWebviewReady(false);
       const e = evt as { errorDescription?: string; errorCode?: number };
       if (e?.errorCode === -3) return; // Aborted — ignore (happens on reload)
+      clearTimeout(fallbackTimer);
+      setWebviewReady(false);
       setWebviewError(
         e?.errorDescription ||
           "Failed to load Claw3D. The dev server may still be starting up.",
@@ -163,6 +174,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
     wv.addEventListener("did-finish-load", onLoad);
     wv.addEventListener("did-fail-load", onFail);
     return () => {
+      clearTimeout(fallbackTimer);
       wv.removeEventListener("did-finish-load", onLoad);
       wv.removeEventListener("did-fail-load", onFail);
     };

@@ -96,6 +96,21 @@ const TOOLSET_DEFS: {
     labelKey: "tools.todo.label",
     descriptionKey: "tools.todo.description",
   },
+  {
+    key: "openclaw",
+    labelKey: "tools.openclaw.label",
+    descriptionKey: "tools.openclaw.description",
+  },
+  {
+    key: "clawmem",
+    labelKey: "tools.clawmem.label",
+    descriptionKey: "tools.clawmem.description",
+  },
+  {
+    key: "voice",
+    labelKey: "tools.voice.label",
+    descriptionKey: "tools.voice.description",
+  },
 ];
 
 function localizeToolDefs(

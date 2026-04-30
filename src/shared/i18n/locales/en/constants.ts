@@ -1,6 +1,14 @@
 export default {
   // Provider labels
   autoDetect: "Auto-detect",
+  goclawName: "GoClaw",
+  goclawDesc: "NovaMaster local model router",
+  ollamaLaunchName: "Ollama Launch",
+  ollamaLaunchDesc: "Local & cloud Ollama models",
+  deepseekName: "DeepSeek",
+  deepseekDesc: "DeepSeek coder & chat models",
+  groqName: "Groq",
+  groqDesc: "Fast inference on Groq hardware",
   // Provider setup cards
   openrouterName: "OpenRouter",
   openrouterDesc: "200+ models",
@@ -40,6 +48,7 @@ export default {
   sectionBrowserAutomation: "Browser & Automation",
   sectionVoiceStt: "Voice & STT",
   sectionResearchTraining: "Research & Training",
+  sectionNovaMaster: "NovaMaster",
   // Settings field labels
   openrouterApiKey: "OpenRouter API Key",
   openrouterHint: "200+ models via OpenRouter (recommended)",
@@ -81,6 +90,13 @@ export default {
   googleHint: "Direct access to Gemini models",
   xaiApiKey: "xAI (Grok) API Key",
   xaiHint: "Direct access to Grok models",
+  // NovaMaster keys
+  goclawApiKey: "GoClaw API Key",
+  goclawHint: "NovaMaster model router (port 18790)",
+  openclawApiKey: "OpenClaw API Key",
+  openclawHint: "Skills engine gateway (port 18791)",
+  clawmemApiKey: "ClawMem API Key",
+  clawmemHint: "Agent memory engine (port 7438)",
   exaApiKey: "Exa Search API Key",
   exaHint: "AI-native web search",
   parallelApiKey: "Parallel API Key",

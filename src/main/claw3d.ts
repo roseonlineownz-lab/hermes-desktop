@@ -67,12 +67,28 @@ export function getClaw3dWsUrl(): string {
   return getSavedWsUrl();
 }
 
+/** Read the OpenClaw gateway token from ~/.openclaw/openclaw.json */
+function readOpenclawGatewayToken(): string {
+  try {
+    const configPath = join(homedir(), ".openclaw", "openclaw.json");
+    const raw = readFileSync(configPath, "utf-8");
+    const config = JSON.parse(raw);
+    const gateway = config?.gateway;
+    const auth = gateway?.auth;
+    const token = typeof auth?.token === "string" ? auth.token.trim() : "";
+    return token;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Write Claw3D settings to ~/.openclaw/claw3d/settings.json
  * and .env in the claw3d directory so onboarding is skipped.
  */
 function writeClaw3dSettings(wsUrl?: string): void {
   const url = wsUrl || getSavedWsUrl();
+  const openclawToken = readOpenclawGatewayToken();
 
   // Write ~/.openclaw/claw3d/settings.json
   try {
@@ -87,11 +103,35 @@ function writeClaw3dSettings(wsUrl?: string): void {
       /* fresh */
     }
 
+    // Update gateway section with correct token from openclaw.json
+    const gateway = typeof existing.gateway === "object" && existing.gateway
+      ? { ...(existing.gateway as Record<string, unknown>) }
+      : { url, token: openclawToken, adapterType: "local" };
+
+    if (openclawToken) {
+      gateway.token = openclawToken;
+      // Update all profile tokens that use the openclaw gateway
+      const profiles = typeof gateway.profiles === "object" && gateway.profiles
+        ? { ...(gateway.profiles as Record<string, unknown>) }
+        : {};
+      for (const [key, value] of Object.entries(profiles)) {
+        if (typeof value === "object" && value !== null) {
+          const profile = { ...(value as Record<string, unknown>) };
+          if (profile.url && String(profile.url).includes("18791")) {
+            profile.token = openclawToken;
+            profiles[key] = profile;
+          }
+        }
+      }
+      gateway.profiles = profiles;
+    }
+
     const settings = {
       ...existing,
       adapter: "hermes",
       url,
-      token: "",
+      token: openclawToken,
+      gateway,
     };
     safeWriteFile(settingsPath, JSON.stringify(settings, null, 2));
   } catch {
@@ -109,7 +149,7 @@ function writeClaw3dSettings(wsUrl?: string): void {
         `HOST=127.0.0.1`,
         `NEXT_PUBLIC_GATEWAY_URL=${url}`,
         `CLAW3D_GATEWAY_URL=${url}`,
-        `CLAW3D_GATEWAY_TOKEN=`,
+        openclawToken ? `CLAW3D_GATEWAY_TOKEN=${openclawToken}` : "CLAW3D_GATEWAY_TOKEN=",
         `HERMES_ADAPTER_PORT=18789`,
         `HERMES_MODEL=hermes`,
         `HERMES_AGENT_NAME=Hermes`,
