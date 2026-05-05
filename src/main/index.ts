@@ -197,7 +197,7 @@ function setupIPC(): void {
     try {
       await runInstall((progress: InstallProgress) => {
         event.sender.send("install-progress", progress);
-      });
+      }, mainWindow);
       return { success: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -237,7 +237,7 @@ function setupIPC(): void {
 
   // Configuration (profile-aware)
   ipcMain.handle("get-locale", () => getAppLocale());
-  ipcMain.handle("set-locale", (_event, locale: "en" | "zh-CN") =>
+  ipcMain.handle("set-locale", (_event, locale: "en" | "es" | "zh-CN") =>
     setAppLocale(locale),
   );
 
@@ -812,13 +812,15 @@ function buildMenu(): void {
         {
           label: "Hermes Agent on GitHub",
           click: (): void => {
-            shell.openExternal("https://github.com/fathah/Hermes-Agent");
+            shell.openExternal("https://github.com/NousResearch/hermes-agent/");
           },
         },
         {
           label: "Report an Issue",
           click: (): void => {
-            shell.openExternal("https://github.com/fathah/Hermes-Agent/issues");
+            shell.openExternal(
+              "https://github.com/fathah/hermes-desktop/issues",
+            );
           },
         },
       ],
