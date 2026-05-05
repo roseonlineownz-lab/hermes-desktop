@@ -18,8 +18,8 @@ const DEV_PID_FILE = join(HERMES_HOME, "claw3d-dev.pid");
 const ADAPTER_PID_FILE = join(HERMES_HOME, "claw3d-adapter.pid");
 const PORT_FILE = join(HERMES_HOME, "claw3d-port");
 const WS_URL_FILE = join(HERMES_HOME, "claw3d-ws-url");
-const DEFAULT_PORT = 3000;
-const DEFAULT_WS_URL = "ws://localhost:18789";
+const DEFAULT_PORT = 9119;
+const DEFAULT_WS_URL = "ws://localhost:18791";
 const CLAW3D_SETTINGS_DIR = join(homedir(), ".openclaw", "claw3d");
 
 let devServerProcess: ChildProcess | null = null;
@@ -104,9 +104,10 @@ function writeClaw3dSettings(wsUrl?: string): void {
     }
 
     // Update gateway section with correct token from openclaw.json
-    const gateway = typeof existing.gateway === "object" && existing.gateway
-      ? { ...(existing.gateway as Record<string, unknown>) }
-      : { url, token: openclawToken, adapterType: "local" };
+    const gateway: Record<string, unknown> =
+      typeof existing.gateway === "object" && existing.gateway
+        ? { ...(existing.gateway as Record<string, unknown>) }
+        : { url, token: openclawToken, adapterType: "local" };
 
     if (openclawToken) {
       gateway.token = openclawToken;
@@ -181,8 +182,9 @@ function checkPort(port: number): Promise<boolean> {
   });
 }
 
-// Detect a Claw3D server already running on `port` outside this app's control.
-// Returns true if the /api/studio endpoint responds with Claw3D-shaped JSON.
+// Detect an Office-compatible server already running on `port` outside this app's control.
+// Accept both Claw3D (/api/studio) and Hermes Dashboard (/) so the desktop UI
+// can adopt an already-running Office server instead of reporting a false port conflict.
 async function probeExternalClaw3d(port: number): Promise<boolean> {
   try {
     const controller = new AbortController();
@@ -195,6 +197,23 @@ async function probeExternalClaw3d(port: number): Promise<boolean> {
     const j = (await r.json()) as Record<string, unknown>;
     const s = j?.settings as Record<string, unknown> | undefined;
     return !!(s && typeof s === "object" && s.gateway);
+  } catch {
+    /* try Hermes Dashboard below */
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 800);
+    const r = await fetch(`http://127.0.0.1:${port}/`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) return false;
+    const html = await r.text();
+    return (
+      html.includes("Hermes Agent - Dashboard") ||
+      html.includes("__HERMES_SESSION_TOKEN__")
+    );
   } catch {
     return false;
   }

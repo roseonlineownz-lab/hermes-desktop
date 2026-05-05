@@ -1,6 +1,14 @@
 export default {
   // Provider labels
   autoDetect: "自动检测",
+  goclawName: "GoClaw",
+  goclawDesc: "NovaMaster 本地模型路由器",
+  ollamaLaunchName: "Ollama Launch",
+  ollamaLaunchDesc: "本地与云端 Ollama 模型",
+  deepseekName: "DeepSeek",
+  deepseekDesc: "DeepSeek 编程与对话模型",
+  groqName: "Groq",
+  groqDesc: "Groq 硬件上的高速推理",
   // Provider setup cards
   openrouterName: "OpenRouter",
   openrouterDesc: "200+ 模型",
@@ -40,6 +48,7 @@ export default {
   sectionBrowserAutomation: "浏览器与自动化",
   sectionVoiceStt: "语音与语音识别",
   sectionResearchTraining: "研究与训练",
+  sectionNovaMaster: "NovaMaster",
   // Settings field labels
   openrouterApiKey: "OpenRouter API Key",
   openrouterHint: "通过 OpenRouter 使用 200+ 模型（推荐）",
@@ -81,6 +90,13 @@ export default {
   googleHint: "直接使用 Gemini 模型",
   xaiApiKey: "xAI (Grok) API Key",
   xaiHint: "直接使用 Grok 模型",
+  // NovaMaster keys
+  goclawApiKey: "GoClaw API Key",
+  goclawHint: "NovaMaster 模型路由器（端口 18790）",
+  openclawApiKey: "OpenClaw API Key",
+  openclawHint: "技能引擎网关（端口 18791）",
+  clawmemApiKey: "ClawMem API Key",
+  clawmemHint: "代理记忆引擎（端口 7438）",
   exaApiKey: "Exa Search API Key",
   exaHint: "AI 原生网页搜索",
   parallelApiKey: "Parallel API Key",

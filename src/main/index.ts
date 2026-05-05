@@ -111,9 +111,11 @@ import { getAppLocale, setAppLocale } from "./locale";
 
 
 // WSL/Linux headless: disable GPU acceleration to prevent black screen
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch("no-sandbox");
-app.commandLine.appendSwitch("disable-gpu-sandbox");
+if (app) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-gpu-sandbox");
+}
 process.on("uncaughtException", (err) => {
   console.error("[MAIN UNCAUGHT]", err);
 });

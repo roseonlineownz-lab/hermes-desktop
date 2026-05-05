@@ -59,6 +59,18 @@ export default {
     label: "Task Planning",
     description: "Create and manage to-do lists for complex tasks",
   },
+  openclaw: {
+    label: "OpenClaw Skills",
+    description: "Execute skills via the OpenClaw Gateway (port 18791)",
+  },
+  clawmem: {
+    label: "ClawMem Memory",
+    description: "Persistent agent memory via ClawMem (port 7438)",
+  },
+  voice: {
+    label: "Voice Loop",
+    description: "Whisper STT to LLM to VibeVoice TTS voice pipeline",
+  },
   mcpServers: "MCP Servers",
   mcpDescription: "Model Context Protocol servers configured in config.yaml. Manage via <code>hermes mcp add/remove</code> in the terminal.",
   http: "HTTP",
