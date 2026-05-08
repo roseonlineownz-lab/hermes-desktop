@@ -75,6 +75,27 @@ function Layout(): React.JSX.Element {
   // Remote mode — many screens show "not available" instead of empty data
   const [remoteMode, setRemoteMode] = useState(false);
 
+  // Keep UI profile state aligned with Hermes active profile on startup.
+  useEffect(() => {
+    let cancelled = false;
+    window.hermesAPI
+      .listProfiles()
+      .then((profiles) => {
+        if (cancelled) return;
+        const selected =
+          profiles.find((p) => p.isActive)?.name ??
+          profiles[0]?.name ??
+          "default";
+        setActiveProfile(selected);
+      })
+      .catch(() => {
+        /* non-fatal */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Re-check remote mode on tab switch (picks up Settings changes)
   useEffect(() => {
     window.hermesAPI.isRemoteMode().then(setRemoteMode);

@@ -22,10 +22,10 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
   const [state, setState] = useState<OfficeState>("checking");
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [port, setPort] = useState(9119);
-  const [portInput, setPortInput] = useState("9119");
+  const [port, setPort] = useState(9120);
+  const [portInput, setPortInput] = useState("9120");
   const [portInUse, setPortInUse] = useState(false);
-  const [wsUrlInput, setWsUrlInput] = useState("ws://localhost:18791");
+  const [wsUrlInput, setWsUrlInput] = useState("ws://localhost:18789");
   const [error, setError] = useState("");
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState("");
@@ -57,7 +57,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
     setPort(status.port);
     setPortInput(String(status.port));
     setPortInUse(status.portInUse);
-    setWsUrlInput(status.wsUrl || "ws://localhost:18791");
+    setWsUrlInput(status.wsUrl || "ws://localhost:18789");
     if (status.error) setError(status.error);
     if (status.installed) {
       setState("ready");
@@ -428,7 +428,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleWsUrlSave();
               }}
-              placeholder="ws://localhost:18791"
+              placeholder="ws://localhost:18789"
             />
           </div>
           <button className="btn btn-secondary btn-sm" onClick={loadLogs}>

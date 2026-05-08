@@ -18,9 +18,11 @@ const DEV_PID_FILE = join(HERMES_HOME, "claw3d-dev.pid");
 const ADAPTER_PID_FILE = join(HERMES_HOME, "claw3d-adapter.pid");
 const PORT_FILE = join(HERMES_HOME, "claw3d-port");
 const WS_URL_FILE = join(HERMES_HOME, "claw3d-ws-url");
-const DEFAULT_PORT = 9119;
-const DEFAULT_WS_URL = "ws://localhost:18791";
+const DEFAULT_PORT = 9120;
+const DEFAULT_WS_URL = "ws://localhost:18789";
+const LEGACY_OPENCLAW_WS_URL = "ws://localhost:18791";
 const CLAW3D_SETTINGS_DIR = join(homedir(), ".openclaw", "claw3d");
+const NEXT_DEV_LOCK_FILE = join(HERMES_OFFICE_DIR, ".next", "dev", "lock");
 
 let devServerProcess: ChildProcess | null = null;
 let adapterProcess: ChildProcess | null = null;
@@ -51,20 +53,60 @@ export function getClaw3dPort(): number {
 function getSavedWsUrl(): string {
   try {
     const url = readFileSync(WS_URL_FILE, "utf-8").trim();
-    return url || DEFAULT_WS_URL;
+    if (!url) return DEFAULT_WS_URL;
+    // One-way migration: if the legacy URL is stored but Claw3D settings
+    // already point to Hermes adapter, align native setting automatically.
+    if (url === LEGACY_OPENCLAW_WS_URL && isHermesGatewayConfigured()) {
+      safeWriteFile(WS_URL_FILE, DEFAULT_WS_URL);
+      return DEFAULT_WS_URL;
+    }
+    return url;
   } catch {
     return DEFAULT_WS_URL;
   }
 }
 
 export function setClaw3dWsUrl(url: string): void {
-  safeWriteFile(WS_URL_FILE, url);
+  safeWriteFile(WS_URL_FILE, url.trim());
   // Also update the settings.json so Claw3D picks it up
-  writeClaw3dSettings(url);
+  writeClaw3dSettings(url.trim());
 }
 
 export function getClaw3dWsUrl(): string {
   return getSavedWsUrl();
+}
+
+function isNextDevLockError(text: string): boolean {
+  return (
+    /Unable to acquire lock/i.test(text) &&
+    /another instance of next dev running/i.test(text)
+  );
+}
+
+function isHermesGatewayConfigured(): boolean {
+  try {
+    const settingsPath = join(CLAW3D_SETTINGS_DIR, "settings.json");
+    const raw = readFileSync(settingsPath, "utf-8");
+    const parsed = JSON.parse(raw) as {
+      gateway?: { url?: unknown; adapterType?: unknown };
+    };
+    const gateway = parsed.gateway;
+    return (
+      typeof gateway?.url === "string" &&
+      gateway.url.trim() === DEFAULT_WS_URL &&
+      typeof gateway?.adapterType === "string" &&
+      gateway.adapterType.trim().toLowerCase() === "hermes"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function inferAdapterType(url: string): string {
+  if (url.includes("18789")) return "hermes";
+  if (url.includes("18791")) return "openclaw";
+  if (url.startsWith("ws://") || url.startsWith("wss://")) return "custom";
+  return "local";
 }
 
 /** Read the OpenClaw gateway token from ~/.openclaw/openclaw.json */
@@ -89,6 +131,9 @@ function readOpenclawGatewayToken(): string {
 function writeClaw3dSettings(wsUrl?: string): void {
   const url = wsUrl || getSavedWsUrl();
   const openclawToken = readOpenclawGatewayToken();
+  const adapterType = inferAdapterType(url);
+  const gatewayTokenForEnv =
+    adapterType === "hermes" || adapterType === "demo" ? "" : openclawToken;
 
   // Write ~/.openclaw/claw3d/settings.json
   try {
@@ -107,7 +152,10 @@ function writeClaw3dSettings(wsUrl?: string): void {
     const gateway: Record<string, unknown> =
       typeof existing.gateway === "object" && existing.gateway
         ? { ...(existing.gateway as Record<string, unknown>) }
-        : { url, token: openclawToken, adapterType: "local" };
+        : { url, token: openclawToken, adapterType };
+
+    gateway.url = url;
+    gateway.adapterType = adapterType;
 
     if (openclawToken) {
       gateway.token = openclawToken;
@@ -127,11 +175,22 @@ function writeClaw3dSettings(wsUrl?: string): void {
       gateway.profiles = profiles;
     }
 
+    if (adapterType === "hermes") {
+      // Hermes adapter runs local and does not require OpenClaw token injection.
+      gateway.token = "";
+    }
+
+    gateway.lastKnownGood = {
+      url,
+      token: adapterType === "hermes" ? "" : openclawToken,
+      adapterType,
+    };
+
     const settings = {
       ...existing,
       adapter: "hermes",
       url,
-      token: openclawToken,
+      token: adapterType === "hermes" ? "" : openclawToken,
       gateway,
     };
     safeWriteFile(settingsPath, JSON.stringify(settings, null, 2));
@@ -150,7 +209,10 @@ function writeClaw3dSettings(wsUrl?: string): void {
         `HOST=127.0.0.1`,
         `NEXT_PUBLIC_GATEWAY_URL=${url}`,
         `CLAW3D_GATEWAY_URL=${url}`,
-        openclawToken ? `CLAW3D_GATEWAY_TOKEN=${openclawToken}` : "CLAW3D_GATEWAY_TOKEN=",
+        `CLAW3D_GATEWAY_ADAPTER_TYPE=${adapterType}`,
+        gatewayTokenForEnv
+          ? `CLAW3D_GATEWAY_TOKEN=${gatewayTokenForEnv}`
+          : "CLAW3D_GATEWAY_TOKEN=",
         `HERMES_ADAPTER_PORT=18789`,
         `HERMES_MODEL=hermes`,
         `HERMES_AGENT_NAME=Hermes`,
@@ -525,13 +587,37 @@ function killProcessTree(proc: ChildProcess): void {
   }
 }
 
-export function startDevServer(): boolean {
+export async function startDevServer(): Promise<boolean> {
   if (isDevServerRunning()) return true;
   if (!existsSync(join(HERMES_OFFICE_DIR, "node_modules"))) return false;
 
   devServerError = "";
   devServerLogs = "";
   const port = getSavedPort();
+  const portInUse = await checkPort(port);
+
+  // If the port is already serving an Office-compatible app, adopt it.
+  if (portInUse) {
+    const externalClaw3d = await probeExternalClaw3d(port);
+    if (externalClaw3d) {
+      devServerError = "";
+      devServerLogs += `[claw3d] Reusing existing Office server on port ${port}\n`;
+      if (devServerLogs.length > 2000) devServerLogs = devServerLogs.slice(-2000);
+      return true;
+    }
+    devServerError = `Port ${port} is already in use by another process.`;
+    return false;
+  }
+
+  // Recover from stale Next.js lock after crash/forced stop.
+  if (existsSync(NEXT_DEV_LOCK_FILE)) {
+    try {
+      unlinkSync(NEXT_DEV_LOCK_FILE);
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   const npm = findNpm();
   const proc = spawn(npm, ["run", "dev"], {
     cwd: HERMES_OFFICE_DIR,
@@ -559,6 +645,11 @@ export function startDevServer(): boolean {
     const text = stripAnsi(data.toString());
     devServerLogs += text;
     if (devServerLogs.length > 2000) devServerLogs = devServerLogs.slice(-2000);
+    if (isNextDevLockError(text)) {
+      devServerError =
+        "Another hermes-office dev instance is running (.next/dev/lock). Stop it or remove stale lock.";
+      return;
+    }
     // Capture real errors (not warnings)
     if (
       /error|EADDRINUSE|ENOENT|failed|fatal/i.test(text) &&
@@ -673,7 +764,7 @@ export function stopAdapter(): void {
   cleanupPid(ADAPTER_PID_FILE);
 }
 
-export function startAll(): { success: boolean; error?: string } {
+export async function startAll(): Promise<{ success: boolean; error?: string }> {
   if (!existsSync(join(HERMES_OFFICE_DIR, "node_modules"))) {
     return {
       success: false,
@@ -681,10 +772,14 @@ export function startAll(): { success: boolean; error?: string } {
     };
   }
 
+  // Refresh Office env/settings on every start so legacy URLs (e.g. 18791)
+  // cannot persist after adapter migrations.
+  writeClaw3dSettings();
+
   const port = getSavedPort();
 
   // Start dev server
-  const devOk = startDevServer();
+  const devOk = await startDevServer();
   if (!devOk) {
     return {
       success: false,
